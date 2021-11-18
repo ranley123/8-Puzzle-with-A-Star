@@ -1,79 +1,82 @@
-import dsa.LinkedQueue;
+import dsa.LinkedStack;
 import dsa.MinPQ;
 import stdlib.In;
 import stdlib.StdOut;
 
 // A data type that implements the A* algorithm for solving the 8-puzzle and its generalizations.
 public class Solver {
-    Node goal;
-    
+    SearchNode goal = null; // the goal board
+    LinkedStack<Board> solution = new LinkedStack<>(); // the solution stack
+    int moves = 0; // the minimum moves
+
     // Finds a solution to the initial board using the A* algorithm.
     public Solver(Board board) {
-        MinPQ<Node> PQ = new MinPQ<Node>();
-        Node Node = new Node(board, 0, null);
-        PQ.insert(Node);
-        // get the best choice
-        Node min = PQ.delMin();
+        if (board == null) {
+            throw new IllegalArgumentException("board is null");
+        }
+        MinPQ<SearchNode> PQ = new MinPQ<SearchNode>();
+        SearchNode node = new SearchNode(board, 0, null);
+        PQ.insert(node);
 
-        while(!min.board.isGoal()) {
-            for (Board b : min.board.neighbors()) {
-                // a critical optimization to prevent duplication of boards
-                if (min.prev == null || !b.equals(min.prev.board)) {
-                    Node n = new Node(b, 0, null);
-                    n.moves = min.moves + 1;
-                    n.prev = min;
-                    PQ.insert(n);
+        while (!PQ.isEmpty()) {
+            node = PQ.delMin();
+            if (node.board.isGoal()) {
+                moves = node.moves;
+                goal = node;
+                break;
+            }
+            for (Board b :node.board.neighbors()) {
+                if (node.previous == null || !b.equals(node.previous.board)) {
+                    PQ.insert(new SearchNode(b, node.moves + 1,  node));
                 }
             }
-            min = PQ.delMin();
         }
-
-        // if the goal is achieved
-        if (min.board.isGoal())
-            goal = min;
-        else
-            goal = null;
     }
 
     // Returns the minimum number of moves needed to solve the initial board.
     public int moves() {
-        if (goal == null)
-            return -1;
-        else
-            return goal.moves;
+        return goal == null? -1: goal.moves;
     }
 
     // Returns a sequence of boards in a shortest solution of the initial board.
     public Iterable<Board> solution() {
-        if (goal == null)  return null;
-        LinkedQueue<Board> res = new LinkedQueue<>();
-        for (Node n = goal; n != null; n = n.prev)
-            res.enqueue(n.board);
-        return res;
+        if (goal == null)  {
+            return null;
+        }
+        SearchNode cur = goal;
+        while (cur != null) {
+            solution.push(cur.board);
+            cur = cur.previous;
+        }
+        return solution;
     }
 
     // A data type that represents a search node in the grame tree. Each node includes a
     // reference to a board, the number of moves to the node from the initial node, and a
     // reference to the previous node.
-    private class Node implements Comparable<Node> {
+    private class SearchNode implements Comparable<SearchNode> {
         private int moves;                 // this step and pointed to the previous search node
         private Board board;
-        private Node prev;
+        private SearchNode previous;
 
-        public Node(Board board, int moves, Node previous) {
+        public SearchNode(Board board, int moves, SearchNode previous) {
             this.board = board;
             this.moves = moves;
-            this.prev = previous;
+            this.previous = previous;
         }
 
         // Returns a comparison of this node and other based on the following sum:
         //   Manhattan distance of the board in the node + the # of moves to the node
-        public int compareTo(Node other) {
-            int pa = this.board.manhattan() + this.moves;
-            int pb = other.board.manhattan() + other.moves;
-            if (pa > pb)   return 1;
-            if (pa < pb)   return -1;
-            else              return 0;
+        public int compareTo(SearchNode other) {
+            int a = this.board.manhattan + this.moves;
+            int b = other.board.manhattan + other.moves;
+            if (a > b) {
+                return 1;
+            }
+            if (a < b) {
+                return -1;
+            }
+            return 0;
         }
     }
 
@@ -99,7 +102,7 @@ public class Solver {
                 StdOut.println("----------");
             }
         } else {
-            StdOut.println("Unsolvable puzzle");
+            throw new IllegalArgumentException("Unsolvable puzzle");
         }
     }
 }
